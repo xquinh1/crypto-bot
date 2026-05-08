@@ -62,7 +62,17 @@ function getSupportedChains() {
 }
 
 function getChain(slug) {
-  return CHAINS[String(slug || "").toLowerCase()] || null
+  const normalizedSlug = String(slug || "").toLowerCase()
+  const chain = CHAINS[normalizedSlug]
+
+  if (!chain) {
+    return null
+  }
+
+  return {
+    slug: normalizedSlug,
+    ...chain,
+  }
 }
 
 module.exports = {
