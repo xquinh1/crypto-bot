@@ -12,7 +12,9 @@ function getRequiredChainProvider(chain) {
     throw new Error(`Missing ${chain.rpcEnv} in .env`)
   }
 
-  return new ethers.JsonRpcProvider(rpcUrl)
+  return new ethers.JsonRpcProvider(rpcUrl, undefined, {
+    batchMaxCount: 1,
+  })
 }
 
 function getDefaultChain() {

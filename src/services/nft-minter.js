@@ -1,6 +1,9 @@
 const { ethers } = require("ethers")
 
 const MINT_NAME_HINTS = ["mint", "publicmint", "freemint", "presalemint"]
+const BLOCKED_MINT_FUNCTION_NAMES = [
+  "mintSeaDrop",
+]
 const PRICE_FUNCTIONS = [
   "mintPrice",
   "publicMintPrice",
@@ -270,6 +273,10 @@ async function sendMintTransaction({ contract, mintFunction, walletAddress, quan
 }
 
 function buildMintFunction(fragment) {
+  if (BLOCKED_MINT_FUNCTION_NAMES.includes(fragment.name)) {
+    return null
+  }
+
   const inputPlan = fragment.inputs.map((input) => getInputRole(input.type))
 
   if (inputPlan.includes("unsupported")) {

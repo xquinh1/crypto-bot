@@ -14,6 +14,18 @@ const {
   simulateMint,
   waitForMintOpen,
 } = require("../../services/nft-minter")
+const {
+  DEFAULT_FEE_RECIPIENT,
+  DEFAULT_SEADROP_ADDRESS,
+  SEADROP_ABI,
+  formatSeaDropSummary,
+  formatSeaDropStatus,
+  getSeaDropMintValue,
+  getSeaDropSummary,
+  sendSeaDropMint,
+  simulateSeaDropMint,
+  waitForSeaDropOpen,
+} = require("../../services/seadrop-minter")
 
 const pendingMintsByChat = new Map()
 const GAS_USAGE = [
@@ -73,9 +85,20 @@ function registerMintNftCommand({ bot }) {
       const mintFunctions = detectMintFunctions(abi)
 
       if (!mintFunctions.length) {
+        const seaDropPendingMint = await buildSeaDropPendingMint({
+          chain,
+          contractAddress,
+          feeData,
+          gasSettings,
+          wallet,
+        })
+
+        pendingMintsByChat.set(chatId, seaDropPendingMint)
+
         bot.sendMessage(
           chatId,
-          "ABI fetched, but no supported mint function was detected. Supported auto args: quantity and optional recipient address."
+          buildSeaDropMintSummaryMessage(seaDropPendingMint),
+          confirmMintKeyboard({ functionCount: 1 })
         )
         return
       }
@@ -83,6 +106,7 @@ function registerMintNftCommand({ bot }) {
       const summary = await getMintSummary({ abi, contract, mintFunctions })
 
       pendingMintsByChat.set(chatId, {
+        type: "direct",
         chain,
         contractAddress,
         feeData,
@@ -187,6 +211,11 @@ async function confirmMint({ bot, chatId, quantity, functionNumber }) {
     return
   }
 
+  if (pendingMint.type === "seadrop") {
+    await confirmSeaDropMint({ bot, chatId, pendingMint, quantity })
+    return
+  }
+
   const mintFunction = pendingMint.summary.mintFunctions[functionNumber - 1]
 
   if (!mintFunction) {
@@ -278,6 +307,113 @@ async function confirmMint({ bot, chatId, quantity, functionNumber }) {
   }
 }
 
+async function buildSeaDropPendingMint({
+  chain,
+  contractAddress,
+  feeData,
+  gasSettings,
+  wallet,
+}) {
+  const seaDropAddress = process.env.SEADROP_ADDRESS || DEFAULT_SEADROP_ADDRESS
+  const feeRecipient = process.env.SEADROP_FEE_RECIPIENT || DEFAULT_FEE_RECIPIENT
+  const seaDrop = new ethers.Contract(seaDropAddress, SEADROP_ABI, wallet)
+  const summary = await getSeaDropSummary({
+    seaDrop,
+    nftContract: contractAddress,
+  })
+
+  return {
+    type: "seadrop",
+    chain,
+    contractAddress,
+    feeData,
+    feeRecipient,
+    gasSettings,
+    seaDropAddress,
+    summary,
+  }
+}
+
+async function confirmSeaDropMint({ bot, chatId, pendingMint, quantity }) {
+  try {
+    const wallet = await getRequiredChainWallet(pendingMint.chain)
+    const seaDrop = new ethers.Contract(pendingMint.seaDropAddress, SEADROP_ABI, wallet)
+    let lastWaitNoticeAt = 0
+
+    bot.sendMessage(chatId, "Checking SeaDrop open time...")
+
+    const summary = await waitForSeaDropOpen({
+      seaDrop,
+      nftContract: pendingMint.contractAddress,
+      pollMs: getMintOpenPollMs(),
+      onStatus: async ({ summary }) => {
+        const now = Date.now()
+
+        if (now - lastWaitNoticeAt < 60000) {
+          return
+        }
+
+        lastWaitNoticeAt = now
+        await bot.sendMessage(chatId, `SeaDrop not open yet. ${formatSeaDropStatus(summary)}`)
+      },
+    })
+
+    if (!summary.isOpen) {
+      bot.sendMessage(chatId, `SeaDrop is not open. ${formatSeaDropStatus(summary)}`)
+      return
+    }
+
+    const latestFeeData = await wallet.provider.getFeeData()
+    const gasWarning = buildGasWarning({
+      feeData: latestFeeData,
+      gasSettings: pendingMint.gasSettings,
+    })
+
+    if (gasWarning) {
+      bot.sendMessage(chatId, gasWarning)
+    }
+
+    const value = getSeaDropMintValue({ summary, quantity })
+
+    bot.sendMessage(chatId, "SeaDrop is open. Simulating mint...")
+
+    await simulateSeaDropMint({
+      seaDrop,
+      nftContract: pendingMint.contractAddress,
+      feeRecipient: pendingMint.feeRecipient,
+      walletAddress: wallet.address,
+      quantity,
+      value,
+    })
+
+    bot.sendMessage(chatId, "Simulation passed. Sending SeaDrop mint transaction...")
+
+    const tx = await sendSeaDropMint({
+      seaDrop,
+      nftContract: pendingMint.contractAddress,
+      feeRecipient: pendingMint.feeRecipient,
+      quantity,
+      value,
+      gasSettings: pendingMint.gasSettings,
+    })
+
+    pendingMintsByChat.delete(chatId)
+
+    bot.sendMessage(
+      chatId,
+      [
+        "SeaDrop mint transaction sent.",
+        `Hash: ${tx.hash}`,
+        `Network: ${pendingMint.chain.name} (${pendingMint.chain.chainId})`,
+        `Gas: ${formatGasSettings(pendingMint.gasSettings)}`,
+        getTransactionUrl(pendingMint.chain, tx.hash),
+      ].join("\n")
+    )
+  } catch (error) {
+    bot.sendMessage(chatId, `SeaDrop mint failed: ${error.message}`)
+  }
+}
+
 function buildMintSummaryMessage({ chain, contractAddress, feeData, gasSettings, summary }) {
   const functions = summary.mintFunctions
     .map((mintFunction, index) => {
@@ -306,6 +442,24 @@ function buildMintSummaryMessage({ chain, contractAddress, feeData, gasSettings,
     "Set gas with: /mintgas <maxFeeGwei> <priorityFeeGwei>",
     "Confirm with: /confirmmint <quantity>",
     "Use another function with: /confirmmint <quantity> <functionNumber>",
+  ].join("\n")
+}
+
+function buildSeaDropMintSummaryMessage(pendingMint) {
+  return [
+    "SeaDrop mint detected",
+    `Chain: ${pendingMint.chain.name}`,
+    `Contract: ${pendingMint.contractAddress}`,
+    getAddressUrl(pendingMint.chain, pendingMint.contractAddress),
+    `SeaDrop: ${pendingMint.seaDropAddress}`,
+    `Fee recipient: ${pendingMint.feeRecipient}`,
+    "",
+    formatSeaDropSummary(pendingMint.summary, pendingMint.chain.currency),
+    `Network gas now: ${formatFeeData(pendingMint.feeData)}`,
+    `Gas: ${formatGasSettings(pendingMint.gasSettings)}`,
+    "",
+    "Set gas with: /mintgas <maxFeeGwei> <priorityFeeGwei>",
+    "Confirm with: /confirmmint <quantity>",
   ].join("\n")
 }
 
