@@ -1,24 +1,16 @@
 const { registerStartCommand } = require("./start")
 const { registerBalanceCommand } = require("./check-balance")
+const { registerCodeAgentCommand } = require("./code-agent")
 const { registerMintNftCommand } = require("./mint-nft")
 const { registerSeaDropMintCommand } = require("./seadrop-mint")
-const { registerWalletTrackerCommand } = require("./wallet-tracker")
-const { registerCopyTradeCommand } = require("./copy-trade")
-const { registerAutoMintCommand } = require("./auto-mint")
-const { registerRevokeCheckerCommand } = require("./revoke-checker")
-const { registerSniperBotCommand } = require("./sniper-bot")
 const { registerPortfolioTrackerCommand } = require("./portfolio-tracker")
 
 function registerFeatures(context) {
   registerStartCommand(context)
   registerBalanceCommand(context)
+  registerCodeAgentCommand(context)
   registerMintNftCommand(context)
   registerSeaDropMintCommand(context)
-  registerWalletTrackerCommand(context)
-  registerCopyTradeCommand(context)
-  registerAutoMintCommand(context)
-  registerRevokeCheckerCommand(context)
-  registerSniperBotCommand(context)
   registerPortfolioTrackerCommand(context)
 }
 

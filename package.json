@@ -2,6 +2,7 @@
   "dependencies": {
     "dotenv": "^17.4.2",
     "ethers": "^6.16.0",
-    "node-telegram-bot-api": "^0.67.0"
+    "node-telegram-bot-api": "^0.67.0",
+    "openai": "^6.37.0"
   }
 }

@@ -7,12 +7,7 @@ function mainMenuKeyboard() {
           { text: "Portfolio", callback_data: "menu:portfolio" },
         ],
         [
-          { text: "Wallet Tracker", callback_data: "menu:wallet_tracker" },
-          { text: "Revoke Checker", callback_data: "menu:revoke_checker" },
-        ],
-        [
-          { text: "Copy Trade", callback_data: "menu:copy_trade" },
-          { text: "Sniper Bot", callback_data: "menu:sniper_bot" },
+          { text: "Code Agent", callback_data: "menu:code_agent" },
         ],
       ],
     },

@@ -8,9 +8,9 @@ function registerStartCommand({ bot }) {
     { command: "mintchains", description: "List supported mint chains" },
     { command: "mint", description: "Prepare NFT mint: /mint base 0xContract" },
     { command: "confirmmint", description: "Confirm pending mint: /confirmmint 1" },
-    { command: "trackwallet", description: "Track wallet: /trackwallet 0xAddress" },
-    { command: "trackedwallets", description: "List tracked wallets" },
-    { command: "revoke", description: "Check revoke target: /revoke 0xAddress" },
+    { command: "code", description: "Create code plan and diff preview" },
+    { command: "approvecode", description: "Apply approved code proposal" },
+    { command: "cancelcode", description: "Cancel pending code proposal" },
   ])
 
   bot.onText(/\/start/, (msg) => {
@@ -22,15 +22,12 @@ function registerStartCommand({ bot }) {
         "Commands:",
         "/balance - Check bot wallet balance",
         "/portfolio - Show bot wallet portfolio",
-        "/trackwallet 0xAddress - Track native balance changes",
-        "/trackedwallets - List tracked wallets",
-        "/revoke 0xAddress - Check revoke target",
         "/mintchains - List supported mint chains",
         "/mint base 0xContract - Fetch ABI and prepare NFT mint",
         "/confirmmint 1 - Simulate and send pending mint",
-        "/automint - Auto mint module status",
-        "/copytrade - Copy trade module status",
-        "/sniper - Sniper bot module status",
+        "/code request - Create plan + diff preview",
+        "/approvecode - Apply, commit and push pending code proposal",
+        "/cancelcode - Cancel pending code proposal",
       ].join("\n"),
       mainMenuKeyboard()
     )
@@ -74,10 +71,7 @@ function registerStartCommand({ bot }) {
 
     const messages = {
       "menu:portfolio": "/portfolio",
-      "menu:wallet_tracker": "/trackwallet 0xWalletAddress",
-      "menu:revoke_checker": "/revoke 0xWalletAddress",
-      "menu:copy_trade": "/copytrade",
-      "menu:sniper_bot": "/sniper",
+      "menu:code_agent": "/code sua loi hoac them tinh nang...",
     }
 
     bot.sendMessage(chatId, messages[data] || "Unknown menu action.")
