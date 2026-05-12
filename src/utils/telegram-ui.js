@@ -6,9 +6,6 @@ function mainMenuKeyboard() {
           { text: "Mint NFT", callback_data: "menu:mint" },
           { text: "Portfolio", callback_data: "menu:portfolio" },
         ],
-        [
-          { text: "Code Agent", callback_data: "menu:code_agent" },
-        ],
       ],
     },
   }
