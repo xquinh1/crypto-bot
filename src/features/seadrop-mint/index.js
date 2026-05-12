@@ -8,10 +8,12 @@ const {
   SEADROP_ABI,
   formatSeaDropSummary,
   formatSeaDropStatus,
+  getSeaDropErrorMessage,
   getSeaDropMintValue,
   getSeaDropSummary,
   sendSeaDropMint,
   simulateSeaDropMint,
+  validateSeaDropMintQuantity,
   waitForSeaDropOpen,
 } = require("../../services/seadrop-minter")
 
@@ -125,6 +127,14 @@ async function confirmSeaDropMint({ bot, chatId, quantity }) {
       return
     }
 
+    await validateSeaDropMintQuantity({
+      seaDrop,
+      nftContract: pendingSeaDrop.nftContract,
+      summary,
+      walletAddress: wallet.address,
+      quantity,
+    })
+
     const value = getSeaDropMintValue({ summary, quantity })
 
     bot.sendMessage(chatId, "SeaDrop is open. Simulating mint...")
@@ -160,7 +170,7 @@ async function confirmSeaDropMint({ bot, chatId, quantity }) {
       ].join("\n")
     )
   } catch (error) {
-    bot.sendMessage(chatId, `SeaDrop mint failed: ${error.message}`)
+    bot.sendMessage(chatId, `SeaDrop mint failed: ${getSeaDropErrorMessage(error)}`)
   }
 }
 
